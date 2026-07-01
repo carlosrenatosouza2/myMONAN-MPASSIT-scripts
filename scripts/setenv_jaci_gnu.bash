@@ -55,7 +55,7 @@ export DIR_SCRIPTS=$(dirname $(dirname $(pwd)))
 export DIR_DADOS=${DIR_SCRIPTS}
 export MPASSIT_DIR=/lustre/projetos/monan_adm/carlos.souza/MPASSIT/myMPASSIT/myMONAN-MPASSIT-scripts/sources/MPASSIT_feature/mpassit-mod2scripts-80
 export myDIR=$(basename $(dirname $(pwd)))
-
+export DIRDADOS=/p/projetos/monan_adm/monan/dados/MPASSIT_v0.1.x
 
 # Colors:
 #
@@ -63,3 +63,41 @@ export GREEN='\033[1;32m'  # Green
 export RED='\033[1;31m'    # Red
 export NC='\033[0m'        # No Color
 export BLUE='\033[01;34m'  # Blue
+
+
+
+# MPASSIT Post phase:
+export MPASSIT_QUEUE="pesqextra"
+export MPASSIT_ncores=256
+export MPASSIT_nnodes=1
+export MPASSIT_ncpus=256
+export MPASSIT_ncpn=256
+export MPASSIT_nthreads=1
+export MPASSIT_ncpexec=32
+export MPASSIT_jobname="Post.MPASSIT"
+export MPASSIT_walltime="8:00:00"
+
+
+
+
+
+# Functions: ======================================================================================================
+
+how_many_nodes () { 
+   nume=${1}   
+   deno=${2}
+   num=$(echo "${nume}/${deno}" | bc -l)  
+   how_many_nodes_int=$(echo "${num}/1" | bc)
+   dif=$(echo "scale=0; (${num}-${how_many_nodes_int})*100/1" | bc)
+   rest=$(echo "scale=0; (((${num}-${how_many_nodes_int})*${deno})+0.5)/1" | bc -l)
+   if [ ${dif} -eq 0 ]; then how_many_nodes_left=0; else how_many_nodes_left=1; fi
+   if [ ${how_many_nodes_int} -eq 0 ]; then how_many_nodes_int=1; how_many_nodes_left=0; rest=0; fi
+   how_many_nodes=$(echo "${how_many_nodes_int}+${how_many_nodes_left}" | bc )
+   #echo "INT number of nodes needed: \${how_many_nodes_int}  = ${how_many_nodes_int}"
+   #echo "number of nodes left:       \${how_many_nodes_left} = ${how_many_nodes_left}"
+   echo "The number of nodes needed: \${how_many_nodes}  = ${how_many_nodes}"
+   echo ""
+}
+#----------------------------------------------------------------------------------------------
+
+

@@ -30,4 +30,9 @@ FCST=24
 #----------------------------------------------------------------------
 
 # STEP 1: Installing and compiling the MONAN-MPASSIT:
-time ${SCRIPTS}/1.install_mpassit.bash ${github_link_MPASSIT} ${mpassit_branch}
+#time ${SCRIPTS}/1.install_mpassit.bash ${github_link_MPASSIT} ${mpassit_branch}
+#exit
+
+# STEP 2: Executing the pos-processing MONAN-MPASSIT. 
+time ${SCRIPTS}/2.run_mpassit.bash ${EXP} ${RES} ${YYYYMMDDHHi} ${FCST} 
+#exit

@@ -120,6 +120,7 @@ make install
 
 if [ -s "${MPASSIT_DIR}/bin/mpassit" ] ; then
    cp -f ${MPASSIT_DIR}/bin/mpassit ${EXECS}
+   cp -f ${MPASSIT_DIR}/VERSION.txt ${EXECS}/MPASSIT-VERSION.txt
     echo ""
     echo -e "${GREEN}==>${NC} File convert_mpas generated Sucessfully in ${MPASSIT_DIR}/bin and copied to ${EXECS} !"
     echo

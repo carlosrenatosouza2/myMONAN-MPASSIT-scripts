@@ -73,7 +73,7 @@ export MPASSIT_nnodes=1
 export MPASSIT_ncpus=256
 export MPASSIT_ncpn=256
 export MPASSIT_nthreads=1
-export MPASSIT_ncpexec=32
+export MPASSIT_ncpexec=128  # <------ qtde cores por mpassit NAO ALTERAR!
 export MPASSIT_jobname="Post.MPASSIT"
 export MPASSIT_walltime="8:00:00"
 
@@ -98,6 +98,33 @@ how_many_nodes () {
    echo "The number of nodes needed: \${how_many_nodes}  = ${how_many_nodes}"
    echo ""
 }
+
+
+
+core_distribution() {
+   # Gera a distribuicao de cores por execucao
+   # $1 = total de cores do no
+   # $2 = numero de cores por execucao
+   
+   local total_cores=$1
+   local cores_per_exec=$2
+
+   if (( total_cores % cores_per_exec != 0 )); then
+      echo "ERRO: total_cores (${total_cores}) nao eh divisivel por cores_per_exec (${cores_per_exec})" >&2
+      return 1
+   fi
+
+   local nexec=$(( total_cores / cores_per_exec ))
+
+   for (( slot=0; slot<nexec; slot++ )); do
+      start=$(( slot * cores_per_exec ))
+      end=$(( start + cores_per_exec - 1 ))
+      echo "${start} ${end}"
+   done
+}
+
+
+
 #----------------------------------------------------------------------------------------------
 
 

@@ -24,9 +24,9 @@ monan_branch=1.4.3-rc
 convertmpas_branch=1.2.0
 mpassit_branch="feature/mpassit-mod2scripts-80"
 EXP=GFS
-RES=1024002       #Options: 40962=120km;163842=60km;655362=30Km;1024002=24km;2621442=15Km;5898242=10Km
+RES=5898242       #Options: 40962=120km;163842=60km;655362=30Km;1024002=24km;2621442=15Km;5898242=10Km
 YYYYMMDDHHi=2026012000
-FCST=24
+FCST=240
 #----------------------------------------------------------------------
 
 # STEP 1: Installing and compiling the MONAN-MPASSIT:

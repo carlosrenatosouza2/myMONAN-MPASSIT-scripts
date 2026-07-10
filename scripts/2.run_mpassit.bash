@@ -70,20 +70,21 @@ mkdir -p ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
 # Local variables--------------------------------------
 START_DATE_YYYYMMDD="${YYYYMMDDHHi:0:4}-${YYYYMMDDHHi:4:2}-${YYYYMMDDHHi:6:2}"
 START_HH="${YYYYMMDDHHi:8:2}"
-maxpostpernode=8    # <------ qtde max de convert_mpas por no!
 VARTABLE=".OPER"
 export DIRRUN=${DIRHOMED}/run.${YYYYMMDDHHi}; rm -fr ${DIRRUN}; mkdir -p ${DIRRUN}
 N_MODEL_LEV=55
 NLEV=18
+export maxpostpernode=10     # <------ qtde max de pos por no PODE ALTERAR!
 cores=${MPASSIT_ncpexec}
 MODELOUTPUTDIR=${DATAOUT}/${YYYYMMDDHHi}/Model #put your MONAN dataout dir here!
-MODELOUTPUTDIR=/lustre/projetos/monan_adm/carlos.souza/MPASSIT/MONAN/scripts_CD-CT/dataout/2026012000/Model
+MODELOUTPUTDIR=/p/projetos/monan_adm/carlos.souza/MPASSIT/MONAN/scripts_CD-CT/dataout/2026012000/Model
 #-------------------------------------------------------
 
 # Variables for flex outpout interval from streams.atmosphere------------------------
 t_strout=$(cat ${SCRIPTS}/namelists/streams.atmosphere.TEMPLATE | sed -n '/<stream name="diagnostics"/,/<\/stream>/s/.*output_interval="\([^"]*\)".*/\1/p')
 t_stroutsec=$(echo ${t_strout} | awk -F: '{print ($1 * 3600) + ($2 * 60) + $3}')
 t_strouthor=$(echo "scale=4; (${t_stroutsec}/60)/60" | bc)
+t_stroutmin=$(echo "${t_stroutsec}/60" | bc)
 #------------------------------------------------------------------------------------
 
 # Format to HH:MM:SS t_strout (output_interval)
@@ -188,7 +189,7 @@ done
 
 
 # Searching for x1.${RES}.init.nc:
-
+# TODO: adicionar o diretorio de dados pre do GCC aqui na busca:
 # First looking into default MONAN-PRE dir:
 if [ -s ${DATAOUT}/${YYYYMMDDHHi}/Pre/x1.${RES}.init.nc ]
 then
@@ -196,6 +197,9 @@ then
 elif [ -s ${DATAIN}/fixed/x1.${RES}.init.nc ]
 then
    export INIT_FILE="${DATAIN}/fixed/x1.${RES}.init.nc"
+elif [ -s ${MODELOUTPUTDIR}/../Pre/x1.${RES}.init.nc ]
+then
+   export INIT_FILE="${MODELOUTPUTDIR}/../Pre/x1.${RES}.init.nc"
 else
     echo -e  "\n${RED}==>${NC} ***** ATTENTION *****\n"	  
     echo -e  "${RED}==>${NC} [${0}] File x1.${RES}.init.nc is not available. \n"
@@ -232,7 +236,7 @@ do
    hh=${YYYYMMDDHHi:8:2}
    currentdate=$(date -d "${YYYYMMDDHHi:0:8} ${hh}:00:00 $(echo "(${i}-1)*${t_strout:0:2}" | bc) hours $(echo "(${i}-1)*${t_strout:3:2}" | bc) minutes $(echo "(${i}-1)*${t_strout:6:2}" | bc) seconds" +"%Y%m%d%H.%M.%S")
    diag_name=MONAN_DIAG_G_MOD_${EXP}_${YYYYMMDDHHi}_${currentdate}.x${RES}L${N_MODEL_LEV}.nc
-   echo "$diag_name"
+   #echo "$diag_name"
    
    sed -e "
       s,#INITFILE#,${INIT_FILE},g;
@@ -251,8 +255,7 @@ chmod -R 755 ${DIRRUN}/*
 node=1
 inicio=1   
 fim=$((maxpostpernode <= nfiles ? maxpostpernode : nfiles))
-fim=1
-nfiles=1
+
 while [ ${inicio} -le ${nfiles} ]
 do
    rm -f ${DIRRUN}/PostAtmos_node.${node}.sh
@@ -273,6 +276,8 @@ chmod 755 ${DIRRUN}/*
 
 echo "Executing posts ${inicio} to ${fim} in node Node ${node}."
 
+cpulist1=\$(seq -s: 0 127)
+cpulist2=\$(seq -s: 128 255)
 
 for ii in \$(seq  ${inicio} ${fim})
 do
@@ -282,8 +287,20 @@ do
    chmod 755 *
    chmod 755 ${DATAOUT}/${YYYYMMDDHHi}/Model/*
 
-   echo "time mpiexec -n ${cores} ./mpassit namelist.input"
-   time mpiexec -n ${cores} ./mpassit namelist.input &
+   if [ \$(( ii % 2 )) -eq 0 ]; then
+      cpulist=\${cpulist1}
+   else
+      cpulist=\${cpulist2}
+   fi 
+     
+   echo "time mpiexec -n 128 -cpu-bind=verbose,list:\${cpulist} ./mpassit namelist.input"
+   time mpiexec -n 128 -cpu-bind=list:\${cpulist} ./mpassit namelist.input &
+   
+   
+   (( ii % 2 == 0 )) && wait
+   
+   
+   
 done
 # necessario aguardar as rodadas em background
 wait
@@ -310,13 +327,93 @@ wait
 EOSH
    chmod a+x ${DIRRUN}/PostAtmos_node.${node}.sh 
    cd ${DIRRUN}
-   qsub ${DIRRUN}/PostAtmos_node.${node}.sh 
+   echo -e  "${GREEN}==>${NC} qsub PostAtmos_node.${node}.sh ${inicio} ${fim} \n"
+   jobid[${node}]=$(qsub ${DIRRUN}/PostAtmos_node.${node}.sh  | cut -d '.' -f1)
 
    inicio=$((fim + 1))
    temp=$((fim + maxpostpernode))
    fim=$(( temp < nfiles ? temp : nfiles ))
    node=$((node+1))
+   sleep 5
 done
+
+
+# Dependencias JobId:
+dependency="afterok"
+for job_id in "${jobid[@]}"
+do
+   dependency="${dependency}:${job_id}"
+done
+
+
+
+# Script final , para conferir todos os arquivos, criar o template final  e apagar o diretorio DIRRUN
+node=0
+diag_name_post=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_${YYYYMMDDHHi}.00.00.x${RES}L${N_MODEL_LEV}.nc
+diag_name_templ=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_%y4%m2%d2%h2.%n2.00.x${RES}L${N_MODEL_LEV}.nc
+
+rm -f ${DIRRUN}/PostAtmos_node.${node}.sh
+cat << EOSH >> ${DIRRUN}/PostAtmos_node.${node}.sh 
+#!/bin/bash
+#PBS -N MPASSIT.${node}
+#PBS -q ${MPASSIT_QUEUE}
+#PBS -l select=1:ncpus=${MPASSIT_ncpus}:mpiprocs=${MPASSIT_ncpn}:ompthreads=${MPASSIT_nthreads}
+#PBS -l walltime=${MPASSIT_walltime}
+#PBS -o ${DIRRUN/lustre/p}/PostAtmos_node.${node}.o
+#PBS -e ${DIRRUN/lustre/p}/PostAtmos_node.${node}.e
+#PBS -l place=scatter:excl
+#PBS -V
+
+
+cd ${DIRRUN}
+. ${SCRIPTS}/setenv_jaci_gnu.bash
+chmod 755 ${DIRRUN}/*
+
+# Making template:
+
+cd ${DIRRUN}
+chmod 755 ${DATAOUT}/${YYYYMMDDHHi}/Post/*
+
+
+
+
+rm -fr ${DIRRUN}/qctlinfo.gs
+cat > ${DIRRUN}/qctlinfo.gs <<EOGS
+'reinit'
+'sdfopen ${DATAOUT}/${YYYYMMDDHHi}/Post/${diag_name_post}' 
+'q ctlinfo'
+say result
+'quit'
+EOGS
+
+grads -blc "run ${DIRRUN}/qctlinfo.gs" | awk '/dset/,/endvars/' > ${DIRRUN}/qctlinfo.ctl
+chmod 755 ${DIRRUN}/qctlinfo.ctl
+timectl=\$(grep tdef ${DIRRUN}/qctlinfo.ctl | cut -d" " -f4)
+sed -i '3a\options template' ${DIRRUN}/qctlinfo.ctl
+sed -i "/tdef/c\tdef ${nfiles} linear \${timectl} ${t_stroutmin}mn" ${DIRRUN}/qctlinfo.ctl
+sed -i "/dset/c\dset ^${diag_name_templ}" ${DIRRUN}/qctlinfo.ctl
+
+chmod 755 ${DIRRUN}/*
+mv ${DIRRUN}/qctlinfo.ctl ${DATAOUT}/${YYYYMMDDHHi}/Post/${diag_name_post}.template.ctl
+
+# Saving important files to the logs directory:
+cp -f ${EXECS}/MPASSIT-VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Post
+cp -f ${EXECS}/MPASSIT-VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
+cp -f ${DIRRUN}/dir.0001/namelist.input ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
+cp -f varlist_2d ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
+cp -f varlist_3d ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
+cp -f ${DIRRUN}/PostAtmos_node.* ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
+
+cd ${DIRRUN}/..
+rm -fr ${DIRRUN}
+
+EOSH
+chmod a+x ${DIRRUN}/PostAtmos_node.${node}.sh
+echo -e  "${GREEN}==>${NC} qsub PostAtmos_node.${node}.sh \n"
+cd ${DIRRUN}
+#qsub -W depend=${dependency} -W block=true ${DIRRUN}/PostAtmos_node.${node}.sh
+ qsub -W depend=${dependency}               ${DIRRUN}/PostAtmos_node.${node}.sh
+
 
 
 

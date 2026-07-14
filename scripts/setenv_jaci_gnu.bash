@@ -11,6 +11,7 @@ module load cray-netcdf-hdf5parallel/4.9.0.15
 module load cray-parallel-netcdf/1.12.3.15
 module load xpmem/0.2.119-1.3_gef379be13330
 module load cray-pals
+module load esmf/8.9.1-gcc13
 module load METIS/5.1.0
 module load grads
 
@@ -23,15 +24,23 @@ export LD_LIBRARY_PATH=${NETCDF_DIR}/lib:${LD_LIBRARY_PATH}
 export CMAKE_C_COMPILER=cc
 export CMAKE_Fortran_COMPILER=ftn
 
-# ESMF compilado com NetCDF paralelo
-export ESMF_DIR=/lustre/projetos/monan_adm/carlos.souza/ESMF/esmf-8.9.1
-export ESMF_INCDIR=${ESMF_DIR}/src/include
-export ESMF_LIBDIR=${ESMF_DIR}/lib/libO/Linux.gfortran.64.mpich2.default
-export ESMF_MODDIR=${ESMF_DIR}/mod/modO/Linux.gfortran.64.mpich2.default
-export ESMFMKFILE=${ESMF_DIR}/lib/libO/Linux.gfortran.64.mpich2.default/esmf.mk
-export LIBRARY_PATH=${LIBRARY_PATH}:${ESMF_DIR}/lib/libO/Linux.gfortran.64.mpich2.default
-export LD_LIBRARY_PATH=${NETCDF_DIR}/lib:${ESMF_DIR}/lib/libO/Linux.gfortran.64.mpich2.default:${LD_LIBRARY_PATH}
-export PATH=${PATH}:${ESMF_DIR}/apps/appsO/Linux.gfortran.64.mpich2.default
+# ESMF compilado com NetCDF paralelo em minha conta:
+#export ESMF_DIR=/lustre/projetos/monan_adm/carlos.souza/ESMF/esmf-8.9.1
+#export ESMF_INCDIR=${ESMF_DIR}/src/include
+#export ESMF_LIBDIR=${ESMF_DIR}/lib/libO/Linux.gfortran.64.mpich2.default
+#export ESMF_MODDIR=${ESMF_DIR}/mod/modO/Linux.gfortran.64.mpich2.default
+#export ESMFMKFILE=${ESMF_DIR}/lib/libO/Linux.gfortran.64.mpich2.default/esmf.mk
+#export LIBRARY_PATH=${LIBRARY_PATH}:${ESMF_DIR}/lib/libO/Linux.gfortran.64.mpich2.default
+#export LD_LIBRARY_PATH=${NETCDF_DIR}/lib:${ESMF_DIR}/lib/libO/Linux.gfortran.64.mpich2.default:${LD_LIBRARY_PATH}
+#export PATH=${PATH}:${ESMF_DIR}/apps/appsO/Linux.gfortran.64.mpich2.default
+
+
+# ESMF compilado com NetCDF paralelo NA JACI:
+export ESMF_INCDIR=${ESMF_DIR}/include
+export ESMF_LIBDIR=${ESMF_DIR}/lib/libO/Unicos.gfortran.64.mpi.default
+export ESMF_MODDIR=${ESMF_DIR}/mod/modO/Unicos.gfortran.64.mpi.default
+export LIBRARY_PATH=${LIBRARY_PATH}:${ESMF_LIBDIR}
+export PATH=${PATH}:${ESMF_DIR}/bin/binO/Unicos.gfortran.64.mpi.default
 
 export ESMF_FFLAGS="-I${ESMF_MODDIR} -I${ESMF_INCDIR}"
 export ESMF_LDFLAGS="-L${ESMF_LIBDIR} -lesmf"

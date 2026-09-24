@@ -77,7 +77,7 @@ EXECS=${DIRHOMED}/execs;                mkdir -p ${EXECS}
 
 
 # Input variables:-----------------------------------------------------
-github_link_MPASSIT="https://github.com/carlosrenatosouza2/MyMONAN-MPASSIT-puro.git"
+github_link_MPASSIT=${1}
 tag_or_branch_name_MPASSIT=${2}
 tag_or_branch_name_MPASSIT=${tag_or_branch_name_MPASSIT:="1.4.3-rc"}
 echo "MPASSIT branch name in use: ${tag_or_branch_name_MPASSIT}"

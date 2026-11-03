@@ -1,6 +1,9 @@
 #! /bin/bash -x
 #
 # Author: CRS
+# Choose the simulation mode:
+export MODERUN=R     # R=Regional simulation and G=Global simulation.
+export LBCINT=10800  # Interval (seconds) for updating lateral boundary conditions (when regional mode).
 
 # Load modules
 module purge

@@ -16,7 +16,9 @@
 #        
 #
 #-----------------------------------------------------------------------------#
-
+# TODO List:
+#
+#  1. Copiar todos arquivos de input encontrados em diretorios externos para o datain interno.
 
 if [ $# -ne 4 -a $# -ne 1 ]
 then
@@ -92,59 +94,146 @@ IFS=":" read -r h m s <<< "${t_strout}"
 printf -v t_strout "%02d:%02d:%02d" "$h" "$m" "$s"
 
 # Calculating default parameters for different resolutions
-if [ $RES -eq 1024002 ]; then  #24Km
-   NLAT=721  #180/0.25
-   NLON=1441 #360/0.25
+# global mesh
+if [[ "$RES" == "40962" ]]; then  #120Km
+   NLAT=151 #180/1.2
+   NLON=301 #360/1.2
    STARTLAT=-90.0
    STARTLON=0.0
    ENDLAT=90.0
    ENDLON=360.0
-elif [ $RES -eq 2621442 ]; then  #15Km
-   NLAT=1201 #180/0.15
-   NLON=2401 #360/0.15
-   STARTLAT=-90.0
-   STARTLON=0.0
-   ENDLAT=90.0
-   ENDLON=360.0
-elif [ $RES -eq 40962 ]; then  #120Km
-   NLAT=150 #180/1.2
-   NLON=300 #360/1.2
-   STARTLAT=-90.0
-   STARTLON=0.0
-   ENDLAT=90.0
-   ENDLON=360.0
-elif [ $RES -eq 163842 ]; then  #60Km
+elif [[ "$RES" == "163842" ]]; then  #60Km
    NLAT=301 #180/0.6
    NLON=601 #360/0.6
    STARTLAT=-90.0
    STARTLON=0.0
    ENDLAT=90.0
    ENDLON=360.0
-elif [ $RES -eq 655362 ]; then  #30Km
+elif [[ "$RES" == "655362" ]]; then  #30Km
    NLAT=601 #180/0.3
    NLON=1201 #360/0.3
    STARTLAT=-90.0
    STARTLON=0.0
    ENDLAT=90.0
    ENDLON=360.0
-elif [ $RES -eq 5898242 ]; then  #10Km
-   NLAT=1801 #180/0.10 (+1)
-   NLON=3601 #360/0.10 (+1)
+elif [[ "$RES" == "1024002" ]]; then  #24Km
+   NLAT=721  #180/0.25
+   NLON=1441 #360/0.25
    STARTLAT=-90.0
    STARTLON=0.0
    ENDLAT=90.0
    ENDLON=360.0
-elif [ $RES -eq 65536002 ]; then  #3Km
+elif [[ "$RES" == "2621442" ]]; then  #15Km
+   NLAT=1201 #180/0.15
+   NLON=2401 #360/0.15
+   STARTLAT=-90.0
+   STARTLON=0.0
+   ENDLAT=90.0
+   ENDLON=360.0
+elif [[ "$RES" == "5898242" ]]; then  #10Km
+   NLAT=1801 #180/0.10
+   NLON=3601 #360/0.10
+   STARTLAT=-90.0
+   STARTLON=0.0
+   ENDLAT=90.0
+   ENDLON=360.0
+elif [[ "$RES" == "23592962" ]]; then  #5Km
+   NLAT=3601 #180/0.05
+   NLON=7201 #360/0.05
+   STARTLAT=-90.0
+   STARTLON=0.0
+   ENDLAT=90.0
+   ENDLON=360.0
+elif [[ "$RES" == "65536002" ]]; then  #3Km
    NLAT=6001 #180/0.03 
    NLON=12001 #360/0.03 
    STARTLAT=-90.0
    STARTLON=0.0
    ENDLAT=90.0
    ENDLON=360.0
+# regional mesh
+elif [[ "$RES" == "30km_LAC" ]]; then #30 km (AMS + Caribe)
+   NLAT=354     #106/0.3 +1
+   NLON=301     #90/0.3 +1
+   STARTLAT=-64.0
+   ENDLAT=42
+   STARTLON=254.0
+   ENDLON=344.0
+   DLAT=0.3
+   DLON=0.3
+   MPASSIT_NX=$((NLON + 1))     # MPASSIT: nx-1 pontos de saida -> 302
+   MPASSIT_NY=$((NLAT + 1))     # MPASSIT: ny-1 pontos de saida -> 355
+   # centro do bloco de pontos (a ultima lat e 41.9, nao 42) -> -11.05
+   MPASSIT_REF_LAT=$(awk -v s=$STARTLAT -v n=$NLAT -v d=$DLAT 'BEGIN{printf "%.4f", s+(n-1)*d/2}')
+   # centro em lon convertido para [-180,180] -> -61.0
+   MPASSIT_REF_LON=$(awk -v s=$STARTLON -v n=$NLON -v d=$DLON 'BEGIN{c=s+(n-1)*d/2; if(c>180)c-=360; printf "%.4f", c}')
+elif [[ "$RES" == "10km_LAC" ]]; then #10 km (AMS + Caribe)
+   NLAT=1061   #106/0.1 +1
+   NLON=901   #90/0.1 +1
+   STARTLAT=-64.0
+   ENDLAT=42.0
+   STARTLON=254.0
+   ENDLON=344.0
+   DLAT=0.1
+   DLON=0.1
+   MPASSIT_NX=$((NLON + 1))     # MPASSIT: nx-1 pontos de saida -> 902
+   MPASSIT_NY=$((NLAT + 1))     # MPASSIT: ny-1 pontos de saida -> 1062
+   # centro do bloco de pontos (ultima lat = 42.0) -> -11.0
+   MPASSIT_REF_LAT=$(awk -v s=$STARTLAT -v n=$NLAT -v d=$DLAT 'BEGIN{printf "%.4f", s+(n-1)*d/2}')
+   # centro em lon convertido para [-180,180] -> -61.0
+   MPASSIT_REF_LON=$(awk -v s=$STARTLON -v n=$NLON -v d=$DLON 'BEGIN{c=s+(n-1)*d/2; if(c>180)c-=360; printf "%.4f", c}')
+elif [[ "$RES" == "05km_LAC" ]]; then #5 km (AMS + Caribe)
+   NLAT=2121    #106/0.05 +1
+   NLON=1801    #90/0.05 +1
+   STARTLAT=-64.0
+   ENDLAT=42.0
+   STARTLON=254.0
+   ENDLON=344.0
+   DLAT=0.05
+   DLON=0.05
+   MPASSIT_NX=$((NLON + 1))     # MPASSIT: nx-1 pontos de saida -> 1802
+   MPASSIT_NY=$((NLAT + 1))     # MPASSIT: ny-1 pontos de saida -> 2122
+   # centro do bloco de pontos (ultima lat = 42.0) -> -11.0
+   MPASSIT_REF_LAT=$(awk -v s=$STARTLAT -v n=$NLAT -v d=$DLAT 'BEGIN{printf "%.4f", s+(n-1)*d/2}')
+   # centro em lon convertido para [-180,180] -> -61.0
+   MPASSIT_REF_LON=$(awk -v s=$STARTLON -v n=$NLON -v d=$DLON 'BEGIN{c=s+(n-1)*d/2; if(c>180)c-=360; printf "%.4f", c}')
+else
+   # Define convert_mpas target domain automatically from the grid file
+   echo -e "Calculating convert_mpas target domain of personalized mesh...\n"
+   GRIDFILE="${DATAIN}/fixed/x1.${RES}.grid.nc"
+   MESH_RES_RAD=$(ncdump -v nominalMinDc "${GRIDFILE}" 2>/dev/null | awk '/nominalMinDc =/ {print $3; exit}')
+   MESH_RES_KM=$(awk -v res="${MESH_RES_RAD}" 'BEGIN {printf "%.0f", res * 6371.0}')
+   # Domain margin ("gordura")
+   DOMAIN_MARGIN=2
+   GRID_SPACING=$(awk -v res="${MESH_RES_KM}" 'BEGIN {printf "%.1f", res / 100.0}')
+   # Get minimum and maximum cell-center coordinates
+   LAT_MIN_RAD=$(cdo -s infon -selname,latCell "${GRIDFILE}" 2>/dev/null | awk '/latCell/ {print $9; exit}')
+   LAT_MAX_RAD=$(cdo -s infon -selname,latCell "${GRIDFILE}" 2>/dev/null | awk '/latCell/ {print $11; exit}')
+   LON_MIN_RAD=$(cdo -s infon -selname,lonCell "${GRIDFILE}" 2>/dev/null | awk '/lonCell/ {print $9; exit}')
+   LON_MAX_RAD=$(cdo -s infon -selname,lonCell "${GRIDFILE}" 2>/dev/null | awk '/lonCell/ {print $11; exit}')
+   # Convert radians to degrees
+   RAD2DEG=57.29577951308232
+   LAT_MIN=$(awk -v x="${LAT_MIN_RAD}" -v c="${RAD2DEG}" 'BEGIN {printf "%.1f", x*c}')
+   LAT_MAX=$(awk -v x="${LAT_MAX_RAD}" -v c="${RAD2DEG}" 'BEGIN {printf "%.1f", x*c}')
+   LON_MIN=$(awk -v x="${LON_MIN_RAD}" -v c="${RAD2DEG}" 'BEGIN {printf "%.1f", x*c}')
+   LON_MAX=$(awk -v x="${LON_MAX_RAD}" -v c="${RAD2DEG}" 'BEGIN {printf "%.1f", x*c}')
+   # Add domain margin ("gordura")
+   STARTLAT=$(awk -v x="${LAT_MIN}" -v m="${DOMAIN_MARGIN}" 'BEGIN {printf "%.1f", x-m}')
+   ENDLAT=$(awk -v x="${LAT_MAX}" -v m="${DOMAIN_MARGIN}" 'BEGIN {printf "%.1f", x+m}')
+   STARTLON=$(awk -v x="${LON_MIN}" -v m="${DOMAIN_MARGIN}" 'BEGIN {printf "%.1f", x-m}')
+   ENDLON=$(awk -v x="${LON_MAX}" -v m="${DOMAIN_MARGIN}" 'BEGIN {printf "%.1f", x+m}')
+   # Number of intervals in the regular lat-lon grid.
+   NLAT=$(awk -v start="${STARTLAT}" -v end="${ENDLAT}" -v d="${GRID_SPACING}" 'BEGIN {printf "%.0f", (end-start)/d}')
+   NLON=$(awk -v start="${STARTLON}" -v end="${ENDLON}" -v d="${GRID_SPACING}" 'BEGIN {printf "%.0f", (end-start)/d}')
+   echo -e "  Resolution     : ${MESH_RES_KM} km"
+   echo -e "  STARTLAT       : ${STARTLAT}"
+   echo -e "  ENDLAT         : ${ENDLAT}"
+   echo -e "  STARTLON       : ${STARTLON}"
+   echo -e "  ENDLON         : ${ENDLON}"
+   echo -e "  NLAT           : ${NLAT}"
+   echo -e "  NLON           : ${NLON}\n"
 fi
 #-------------------------------------------------------
-
-# Getting info part file:
 
 # Getting info part file:
 
@@ -171,11 +260,16 @@ else
       else
          echo -e "${GREEN}==>${NC} Nao existe ${graphName}, baixando do site oficial MPAS:"
          (
-            cd "${fixedDir}" &&
-            wget "https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}.tar.gz" &&
-            tar -xzvf "x1.${RES}.tar.gz" &&
-            rm -f "x1.${RES}.tar.gz"
-         ) || { echo "ERRO: falha ao baixar ou extrair x1.${RES}.tar.gz"; exit 1; }
+            if [[ $MODERUN == "R" ]]
+            then
+               cd "${fixedDir}" &&
+               wget "https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}.tar.gz" &&
+               tar -xzvf "x1.${RES}.tar.gz" &&
+               rm -f "x1.${RES}.tar.gz"
+            else
+               echo -e  "${RED}==>${NC} Post fails! Please make sure your REGIONAL files are good."
+            fi
+         ) || { echo "${RED}==>${NC} *****ERRO: falha ao baixar ou extrair x1.${RES}.tar.gz"; exit 1; }
       fi
    fi
 
@@ -242,6 +336,21 @@ how_many_nodes ${nfiles} ${maxpostpernode}
 # Cria os diretorios e arquivos/links para cada saida do MPASSIT:
 cd ${DIRRUN}
 
+
+if [[ $MODERUN == "R" ]]; then
+   echo -e "Post is running in Regional (limited-area) mode.\n"
+   RANSWER=.true.
+elif [[ $MODERUN == "G" ]]; then
+   echo -e "Post is running in Global mode.\n"
+   RANSWER=.false.
+else
+   echo -e  "\n${RED}==>${NC} ***** ATTENTION *****\n"
+   echo -e  "${RED}==>${NC} Post fails! Please select MODERUN=R (Regional) or MODERUN=G (Global) in 'setenv.bash'.\n"
+   echo -e  "${RED}==>${NC} Exiting script. \n"
+   exit 1
+fi
+
+
 for ii in $(seq 1 ${nfiles})
 do
    i=$(printf "%04d" ${ii})
@@ -252,19 +361,35 @@ do
    cp -f ${EXECS}/mpassit ${DIRRUN}/dir.${i} 
    hh=${YYYYMMDDHHi:8:2}
    currentdate=$(date -d "${YYYYMMDDHHi:0:8} ${hh}:00:00 $(echo "(${i}-1)*${t_strout:0:2}" | bc) hours $(echo "(${i}-1)*${t_strout:3:2}" | bc) minutes $(echo "(${i}-1)*${t_strout:6:2}" | bc) seconds" +"%Y%m%d%H.%M.%S")
-   diag_name=MONAN_DIAG_G_MOD_${EXP}_${YYYYMMDDHHi}_${currentdate}.x${RES}L${N_MODEL_LEV}.nc
-   #echo "$diag_name"
+   diag_name=MONAN_DIAG_${MODERUN}_MOD_${EXP}_${YYYYMMDDHHi}_${currentdate}.x${RES}L${N_MODEL_LEV}.nc
    
-   sed -e "
-      s,#INITFILE#,${INIT_FILE},g;
-      s,#MODELFILE#,${MODELOUTPUTDIR}/${diag_name},g;
-      s,#GRAPHINFOFILE#,${grafInfoPartFile},g;
-      s,#NLAT#,${NLAT},g;
-      s,#NLON#,${NLON},g;" \
-      ${SCRIPTS}/namelists/namelist.input.TEMPLATE > ${DIRRUN}/dir.${i}/namelist.input
-
+   if [[ $MODERUN == "G" ]]
+   then
+      sed -e "
+         s,#INITFILE#,${INIT_FILE},g;
+         s,#MODELFILE#,${MODELOUTPUTDIR}/${diag_name},g;
+         s,#GRAPHINFOFILE#,${grafInfoPartFile},g;
+         s,#NLAT#,${NLAT},g;
+         s,#NLON#,${NLON},g; 
+         s,#REGANSWER#,${RANSWER},g;" \
+         ${SCRIPTS}/namelists/namelist.input.TEMPLATE > ${DIRRUN}/dir.${i}/namelist.input
+   else
+      sed -e "
+         s,#INITFILE#,${INIT_FILE},g;
+         s,#MODELFILE#,${MODELOUTPUTDIR}/${diag_name},g;
+         s,#GRAPHINFOFILE#,${grafInfoPartFile},g;
+         s,#NLAT#,${MPASSIT_NY},g;
+         s,#NLON#,${MPASSIT_NX},g; 
+         s,#REGANSWER#,${RANSWER},g;
+         /stand_lon/d;
+         /ny/a\ dx                   = ${DLON}
+         /ny/a\ dy                   = ${DLAT}
+         /ny/a\ ref_lat              = ${MPASSIT_REF_LAT}
+         /ny/a\ ref_lon              = ${MPASSIT_REF_LON}" \
+         ${SCRIPTS}/namelists/namelist.input.TEMPLATE > ${DIRRUN}/dir.${i}/namelist.input
+   fi     
 done
-
+exit
 
 
 cd ${DIRRUN}

@@ -10,7 +10,7 @@
  output_grads         = .true.
  esmf_log             = .true.
  target_grid_type     = 'lat-lon'
- is_regional          = .false.
+ is_regional          = #REGANSWER#
  nx                   = #NLON#
  ny                   = #NLAT#
  stand_lon            = 0.0

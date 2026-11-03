@@ -65,6 +65,7 @@ export DIR_DADOS=${DIR_SCRIPTS}
 export MPASSIT_DIR=/lustre/projetos/monan_adm/carlos.souza/issues/mpassit-regional/myMONAN-MPASSIT-scripts/sources/MPASSIT_feature/monan-mpassit-107-QI
 export myDIR=$(basename $(dirname $(pwd)))
 export DIRDADOS=/p/projetos/monan_adm/monan/dados/MPASSIT_v0.1.x
+export GCCCIS=/p/projetos/monan_adm/monan/CIs
 
 # Colors:
 #

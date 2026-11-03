@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash 
 
 #-----------------------------------------------------------------------------#
 # !SCRIPT: run_mpassit
@@ -184,17 +184,6 @@ else
       { echo "ERRO: gpmetis falhou"; exit 1; }
    grafInfoPartFile=${fixedDir}/${partName}
 fi
-exit
-
-
-# Get some MONAN datain files: just graph info part files...
-#if [ ! -d ${DATAIN}/fixed ]
-#then
-#	echo -e  "${GREEN}==>${NC} copying and linking fixed input data ${SYSTEM_KEYC}... \n"
-#	mkdir -p ${DATAIN}
-#	rsync -rv --chmod=ugo=rw ${DIRDADOS}/MONAN_datain/datain/fixed ${DATAIN}
-#   chmod -R u=rwx,go=rx ${DATAIN}
-#fi
 
 
 files_needed=("${SCRIPTS}/namelists/namelist.input.TEMPLATE" "${SCRIPTS}/namelists/varlist_2d${VARTABLE}" "${SCRIPTS}/namelists/varlist_3d${VARTABLE}" "${EXECS}/mpassit" ${grafInfoPartFile})
@@ -209,24 +198,32 @@ do
 done
 
 
+
 # Searching for x1.${RES}.init.nc:
-# TODO: adicionar o diretorio de dados pre do GCC aqui na busca:
-# First looking into default MONAN-PRE dir:
-if [ -s ${DATAOUT}/${YYYYMMDDHHi}/Pre/x1.${RES}.init.nc ]
+# First looking into default MPASSIT-PRE-dataout dir:
+if [ -s "${DATAOUT}/${YYYYMMDDHHi}/Pre/x1.${RES}.init.nc" ]
 then
    export INIT_FILE="${DATAOUT}/${YYYYMMDDHHi}/Pre/x1.${RES}.init.nc"
-elif [ -s ${DATAIN}/fixed/x1.${RES}.init.nc ]
-then
+elif [ -s "${DATAIN}/fixed/x1.${RES}.init.nc" ] # Looking into MPASSIT-PRE-datain dir:
+then 
    export INIT_FILE="${DATAIN}/fixed/x1.${RES}.init.nc"
-elif [ -s ${MODELOUTPUTDIR}/../Pre/x1.${RES}.init.nc ]
+elif [ -s "${MODELOUTPUTDIR}/../Pre/x1.${RES}.init.nc" ] # Looking into  MONAN-PRE-dataout dir:
 then
    export INIT_FILE="${MODELOUTPUTDIR}/../Pre/x1.${RES}.init.nc"
+elif [ -s "${MODELOUTPUTDIR}/../../../datain/fixed/x1.${RES}.init.nc" ] # Looking into  MONAN-PRE-datain dir:
+then  
+   export INIT_FILE="${MODELOUTPUTDIR}/../../../datain/fixed/x1.${RES}.init.nc"
+elif [ -s  "${GCCCIS}/MONAN/${YYYYMMDDHHi:0:4}/${YYYYMMDDHHi}/x1.${RES}.init.nc" ] # Looking into  GCC-CIs dir:
+then
+   export INIT_FILE="${GCCCIS}/MONAN/${YYYYMMDDHHi:0:4}/${YYYYMMDDHHi}/x1.${RES}.init.nc"
 else
     echo -e  "\n${RED}==>${NC} ***** ATTENTION *****\n"	  
     echo -e  "${RED}==>${NC} [${0}] File x1.${RES}.init.nc is not available. \n"
-    exit -1
+    exit 1
 fi  
 echo "Using ${INIT_FILE}." 
+
+
 
 # Captura quantos arquivos do modelo tiverem para serem pos-processados e
 # quando nos serao necessarios para executar ${maxpostpernode} convert_mpas por no:
@@ -253,7 +250,6 @@ do
    cp -f ${SCRIPTS}/namelists/varlist_2d${VARTABLE} ${DIRRUN}/dir.${i}/varlist_2d
    cp -f ${SCRIPTS}/namelists/varlist_3d${VARTABLE} ${DIRRUN}/dir.${i}/varlist_3d
    cp -f ${EXECS}/mpassit ${DIRRUN}/dir.${i} 
-   
    hh=${YYYYMMDDHHi:8:2}
    currentdate=$(date -d "${YYYYMMDDHHi:0:8} ${hh}:00:00 $(echo "(${i}-1)*${t_strout:0:2}" | bc) hours $(echo "(${i}-1)*${t_strout:3:2}" | bc) minutes $(echo "(${i}-1)*${t_strout:6:2}" | bc) seconds" +"%Y%m%d%H.%M.%S")
    diag_name=MONAN_DIAG_G_MOD_${EXP}_${YYYYMMDDHHi}_${currentdate}.x${RES}L${N_MODEL_LEV}.nc
@@ -268,6 +264,8 @@ do
       ${SCRIPTS}/namelists/namelist.input.TEMPLATE > ${DIRRUN}/dir.${i}/namelist.input
 
 done
+
+
 
 cd ${DIRRUN}
 chmod -R 755 ${DIRRUN}/*

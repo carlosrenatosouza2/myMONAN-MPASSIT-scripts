@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash -x
 
 #-----------------------------------------------------------------------------#
 # !SCRIPT: run_mpassit
@@ -77,7 +77,7 @@ NLEV=18
 export maxpostpernode=10     # <------ qtde max de pos por no PODE ALTERAR!
 cores=${MPASSIT_ncpexec}
 MODELOUTPUTDIR=${DATAOUT}/${YYYYMMDDHHi}/Model #put your MONAN dataout dir here!
-MODELOUTPUTDIR=/p/projetos/monan_adm/carlos.souza/MPASSIT/MONAN/scripts_CD-CT/dataout/2026012000/Model
+MODELOUTPUTDIR=/p/projetos/monan_adm/carlos.souza/issues/mpassit-regional/scripts_CD-CT/dataout/2026080100/Model
 #-------------------------------------------------------
 
 # Variables for flex outpout interval from streams.atmosphere------------------------
@@ -145,38 +145,59 @@ fi
 #-------------------------------------------------------
 
 # Getting info part file:
- 
-if [ ! -s ${DATAIN}/fixed/x1.${RES}.graph.info.part.${cores} ]
+
+# Getting info part file:
+
+fixedDir=${DATAIN}/fixed
+altFixedDir=${MODELOUTPUTDIR}/../../../datain/fixed
+graphName=x1.${RES}.graph.info
+partName=${graphName}.part.${cores}
+
+if [ -s "${fixedDir}/${partName}" ]
 then
-   if [ ! -s ${DATAIN}/fixed/x1.${RES}.graph.info ]
+   grafInfoPartFile=${fixedDir}/${partName}
+elif [ -s "${altFixedDir}/${partName}" ]
+then
+   grafInfoPartFile=${altFixedDir}/${partName}
+else
+   echo -e "${GREEN}==>${NC} Nao existe ${partName}, buscando ${graphName} ..."
+   mkdir -p "${fixedDir}"
+
+   if [ ! -s "${fixedDir}/${graphName}" ]
    then
-      mkdir -p ${DATAIN}/fixed   
-      cd ${DATAIN}/fixed
-      echo -e "${GREEN}==>${NC} downloading meshes tgz files ... \n"
-      wget https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}.tar.gz
-      wget https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}_static.tar.gz
-      tar -xzvf x1.${RES}.tar.gz
-      tar -xzvf x1.${RES}_static.tar.gz
-      chmod 755 *
+      if [ -s "${altFixedDir}/${graphName}" ]
+      then
+         cp "${altFixedDir}/${graphName}" "${fixedDir}/" || exit 1
+      else
+         echo -e "${GREEN}==>${NC} Nao existe ${graphName}, baixando do site oficial MPAS:"
+         (
+            cd "${fixedDir}" &&
+            wget "https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}.tar.gz" &&
+            tar -xzvf "x1.${RES}.tar.gz" &&
+            rm -f "x1.${RES}.tar.gz"
+         ) || { echo "ERRO: falha ao baixar ou extrair x1.${RES}.tar.gz"; exit 1; }
+      fi
    fi
-   echo -e "${GREEN}==>${NC} Creating x1.${RES}.graph.info.part.${cores} ... \n"
-   cd ${DATAIN}/fixed
-   gpmetis -minconn -contig -niter=200 x1.${RES}.graph.info ${cores}
-   rm -fr x1.${RES}.tar.gz x1.${RES}_static.tar.gz
-   chmod 755 *
+
+   echo -e "${GREEN}==>${NC} Creating ${partName} ... \n"
+   gpmetis -minconn -contig -niter=200 "${fixedDir}/${graphName}" "${cores}" ||
+      { echo "ERRO: gpmetis falhou"; exit 1; }
+   grafInfoPartFile=${fixedDir}/${partName}
 fi
-
-# Get some MONAN datain files:
-if [ ! -d ${DATAIN}/fixed ]
-then
-	echo -e  "${GREEN}==>${NC} copying and linking fixed input data ${SYSTEM_KEYC}... \n"
-	mkdir -p ${DATAIN}
-	rsync -rv --chmod=ugo=rw ${DIRDADOS}/MONAN_datain/datain/fixed ${DATAIN}
-   chmod -R u=rwx,go=rx ${DATAIN}
-fi
+exit
 
 
-files_needed=("${SCRIPTS}/namelists/namelist.input.TEMPLATE" "${SCRIPTS}/namelists/varlist_2d${VARTABLE}" "${SCRIPTS}/namelists/varlist_3d${VARTABLE}" "${EXECS}/mpassit" ${DATAIN}/fixed/x1.${RES}.graph.info.part.${cores})
+# Get some MONAN datain files: just graph info part files...
+#if [ ! -d ${DATAIN}/fixed ]
+#then
+#	echo -e  "${GREEN}==>${NC} copying and linking fixed input data ${SYSTEM_KEYC}... \n"
+#	mkdir -p ${DATAIN}
+#	rsync -rv --chmod=ugo=rw ${DIRDADOS}/MONAN_datain/datain/fixed ${DATAIN}
+#   chmod -R u=rwx,go=rx ${DATAIN}
+#fi
+
+
+files_needed=("${SCRIPTS}/namelists/namelist.input.TEMPLATE" "${SCRIPTS}/namelists/varlist_2d${VARTABLE}" "${SCRIPTS}/namelists/varlist_3d${VARTABLE}" "${EXECS}/mpassit" ${grafInfoPartFile})
 for file in "${files_needed[@]}"
 do
   if [ ! -s "${file}" ]
@@ -241,7 +262,7 @@ do
    sed -e "
       s,#INITFILE#,${INIT_FILE},g;
       s,#MODELFILE#,${MODELOUTPUTDIR}/${diag_name},g;
-      s,#GRAPHINFOFILE#,${DATAIN}/fixed/x1.${RES}.graph.info.part.${cores},g;
+      s,#GRAPHINFOFILE#,${grafInfoPartFile},g;
       s,#NLAT#,${NLAT},g;
       s,#NLON#,${NLON},g;" \
       ${SCRIPTS}/namelists/namelist.input.TEMPLATE > ${DIRRUN}/dir.${i}/namelist.input

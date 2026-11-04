@@ -23,7 +23,7 @@ github_link_MPASSIT="https://github.com/monanadmin/MONAN-MPASSIT.git"
 monan_branch=2.0.0-rc
 mpassit_branch="feature/monan-mpassit-107-QI"
 EXP=GFS
-RES=30km_LAC       # Options: 
+RES=10km_LAC       # Options: 
                   #           40962   = 120km
                   #           163842  =  60km
                   #           655362  =  30Km
@@ -34,7 +34,7 @@ RES=30km_LAC       # Options:
 			         #                             10km_LAC = 10km Latin America and the Caribbean (excl. Mexico);
 			         #                             05km_LAC = 05km Latin America and the Caribbean (excl. Mexico).
 			         #                             <your_mesh> saved in 'datain/fixed' (x1.<your_mesh>).
-YYYYMMDDHHi=2026080100
+YYYYMMDDHHi=2026063000
 FCST=24
 #----------------------------------------------------------------------
 

@@ -80,6 +80,7 @@ export maxpostpernode=10     # <------ qtde max de pos por no PODE ALTERAR!
 cores=${MPASSIT_ncpexec}
 MODELOUTPUTDIR=${DATAOUT}/${YYYYMMDDHHi}/Model #put your MONAN dataout dir here!
 MODELOUTPUTDIR=/p/projetos/monan_adm/carlos.souza/issues/mpassit-regional/scripts_CD-CT/dataout/2026080100/Model
+MODELOUTPUTDIR=/p/projetos/monan_adm/joao.messias/i1001/scripts_CD-CT/dataout/2026063000/Model
 #-------------------------------------------------------
 
 # Variables for flex outpout interval from streams.atmosphere------------------------
@@ -205,7 +206,8 @@ else
    MESH_RES_KM=$(awk -v res="${MESH_RES_RAD}" 'BEGIN {printf "%.0f", res * 6371.0}')
    # Domain margin ("gordura")
    DOMAIN_MARGIN=2
-   GRID_SPACING=$(awk -v res="${MESH_RES_KM}" 'BEGIN {printf "%.1f", res / 100.0}')
+   # %.3f: evita espacamento 0.0 para malhas finas (ex.: 3 km -> 0.03)
+   GRID_SPACING=$(awk -v res="${MESH_RES_KM}" 'BEGIN {printf "%.3f", res / 100.0}')
    # Get minimum and maximum cell-center coordinates
    LAT_MIN_RAD=$(cdo -s infon -selname,latCell "${GRIDFILE}" 2>/dev/null | awk '/latCell/ {print $9; exit}')
    LAT_MAX_RAD=$(cdo -s infon -selname,latCell "${GRIDFILE}" 2>/dev/null | awk '/latCell/ {print $11; exit}')
@@ -225,13 +227,26 @@ else
    # Number of intervals in the regular lat-lon grid.
    NLAT=$(awk -v start="${STARTLAT}" -v end="${ENDLAT}" -v d="${GRID_SPACING}" 'BEGIN {printf "%.0f", (end-start)/d}')
    NLON=$(awk -v start="${STARTLON}" -v end="${ENDLON}" -v d="${GRID_SPACING}" 'BEGIN {printf "%.0f", (end-start)/d}')
+   DLAT=${GRID_SPACING}
+   DLON=${GRID_SPACING}
+   # --- MPASSIT ---
+   # Aqui NLAT/NLON sao INTERVALOS -> pontos = N+1 -> nx/ny MPASSIT = pontos+1 = N+2
+   MPASSIT_NX=$((NLON + 2))
+   MPASSIT_NY=$((NLAT + 2))
+   # centro do bloco de pontos: START + N*d/2
+   MPASSIT_REF_LAT=$(awk -v s=$STARTLAT -v n=$NLAT -v d=$DLAT 'BEGIN{printf "%.4f", s+n*d/2}')
+   # centro em lon convertido para [-180,180]
+   MPASSIT_REF_LON=$(awk -v s=$STARTLON -v n=$NLON -v d=$DLON 'BEGIN{c=s+n*d/2; if(c>180)c-=360; printf "%.4f", c}')
    echo -e "  Resolution     : ${MESH_RES_KM} km"
+   echo -e "  Grid spacing   : ${GRID_SPACING} deg"
    echo -e "  STARTLAT       : ${STARTLAT}"
    echo -e "  ENDLAT         : ${ENDLAT}"
    echo -e "  STARTLON       : ${STARTLON}"
    echo -e "  ENDLON         : ${ENDLON}"
    echo -e "  NLAT           : ${NLAT}"
-   echo -e "  NLON           : ${NLON}\n"
+   echo -e "  NLON           : ${NLON}"
+   echo -e "  MPASSIT nx/ny  : ${MPASSIT_NX} / ${MPASSIT_NY}"
+   echo -e "  MPASSIT ref    : ${MPASSIT_REF_LAT} / ${MPASSIT_REF_LON}\n"
 fi
 #-------------------------------------------------------
 
@@ -245,9 +260,12 @@ partName=${graphName}.part.${cores}
 if [ -s "${fixedDir}/${partName}" ]
 then
    grafInfoPartFile=${fixedDir}/${partName}
+   echo "Using ${grafInfoPartFile}"
 elif [ -s "${altFixedDir}/${partName}" ]
 then
-   grafInfoPartFile=${altFixedDir}/${partName}
+   echo "Copying ${altFixedDir}/${partName} to ${fixedDir}"
+   cp -f ${altFixedDir}/${partName} ${fixedDir}
+   grafInfoPartFile=${fixedDir}/${partName}
 else
    echo -e "${GREEN}==>${NC} Nao existe ${partName}, buscando ${graphName} ..."
    mkdir -p "${fixedDir}"
@@ -256,29 +274,35 @@ else
    then
       if [ -s "${altFixedDir}/${graphName}" ]
       then
-         cp "${altFixedDir}/${graphName}" "${fixedDir}/" || exit 1
+         echo "Copying $${altFixedDir}/${graphName} to ${fixedDir}"
+         cp -f ${altFixedDir}/${graphName} ${fixedDir}
+         grafInfoFile=${fixedDir}/${graphName}
       else
-         echo -e "${GREEN}==>${NC} Nao existe ${graphName}, baixando do site oficial MPAS:"
          (
-            if [[ $MODERUN == "R" ]]
+            if [[ $MODERUN == "G" ]]
             then
+               echo -e "${GREEN}==>${NC} Nao existe ${graphName}, baixando do site oficial MPAS:"
                cd "${fixedDir}" &&
                wget "https://www2.mmm.ucar.edu/projects/mpas/atmosphere_meshes/x1.${RES}.tar.gz" &&
                tar -xzvf "x1.${RES}.tar.gz" &&
                rm -f "x1.${RES}.tar.gz"
             else
-               echo -e  "${RED}==>${NC} Post fails! Please make sure your REGIONAL files are good."
+               echo -e  "${RED}----------------------------------"
+               echo -e  "${RED}==>${NC} Post fails! Please make sure your REGIONAL files are in correct places:"
+               echo -e  "  ${RED}==>${NC} ${fixedDir}/${graphName} or ${partName}"
+               echo -e  "  ${RED}==>${NC} ${altFixedDir}/${graphName} or ${partName}"
+               echo -e  "${RED}----------------------------------"
+               exit 1
             fi
          ) || { echo "${RED}==>${NC} *****ERRO: falha ao baixar ou extrair x1.${RES}.tar.gz"; exit 1; }
       fi
    fi
 
    echo -e "${GREEN}==>${NC} Creating ${partName} ... \n"
-   gpmetis -minconn -contig -niter=200 "${fixedDir}/${graphName}" "${cores}" ||
+   gpmetis -minconn -contig -niter=200 ${grafInfoFile} ${cores} ||
       { echo "ERRO: gpmetis falhou"; exit 1; }
    grafInfoPartFile=${fixedDir}/${partName}
 fi
-
 
 files_needed=("${SCRIPTS}/namelists/namelist.input.TEMPLATE" "${SCRIPTS}/namelists/varlist_2d${VARTABLE}" "${SCRIPTS}/namelists/varlist_3d${VARTABLE}" "${EXECS}/mpassit" ${grafInfoPartFile})
 for file in "${files_needed[@]}"
@@ -290,6 +314,7 @@ do
     exit -1
   fi
 done
+
 
 
 
@@ -363,7 +388,7 @@ do
    currentdate=$(date -d "${YYYYMMDDHHi:0:8} ${hh}:00:00 $(echo "(${i}-1)*${t_strout:0:2}" | bc) hours $(echo "(${i}-1)*${t_strout:3:2}" | bc) minutes $(echo "(${i}-1)*${t_strout:6:2}" | bc) seconds" +"%Y%m%d%H.%M.%S")
    diag_name=MONAN_DIAG_${MODERUN}_MOD_${EXP}_${YYYYMMDDHHi}_${currentdate}.x${RES}L${N_MODEL_LEV}.nc
    
-   if [[ $MODERUN == "G" ]]
+   if [[ ${MODERUN} == "G" ]]
    then
       sed -e "
          s,#INITFILE#,${INIT_FILE},g;
@@ -389,7 +414,7 @@ do
          ${SCRIPTS}/namelists/namelist.input.TEMPLATE > ${DIRRUN}/dir.${i}/namelist.input
    fi     
 done
-exit
+
 
 
 cd ${DIRRUN}
@@ -454,11 +479,11 @@ do
    i=\$(printf "%04d" \${ii})
    hh=${YYYYMMDDHHi:8:2}
    currentdate=\$(date -d "${YYYYMMDDHHi:0:8} \${hh}:00:00 \$(echo "(\${i}-1)*${t_strout:0:2}" | bc) hours \$(echo "(\${i}-1)*${t_strout:3:2}" | bc) minutes \$(echo "(\${i}-1)*${t_strout:6:2}" | bc) seconds" +"%Y%m%d%H.%M.%S")
-   diag_name_post=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_\${currentdate}.x${RES}L${N_MODEL_LEV}.nc
+   diag_name_post=MONAN_DIAG_${MODERUN}_POS_${EXP}_${YYYYMMDDHHi}_\${currentdate}.x${RES}L${N_MODEL_LEV}.nc
 
    cd ${DIRRUN}/dir.\${i}
    chmod 755 *
-   cp monan-mpassit-output.nc  ${DATAOUT}/${YYYYMMDDHHi}/Post/\${diag_name_post} & 
+   cp -f monan-mpassit-output.nc  ${DATAOUT}/${YYYYMMDDHHi}/Post/\${diag_name_post} & 
    echo "monan-mpassit-output.nc  ${DATAOUT}/${YYYYMMDDHHi}/Post/\${diag_name_post}"  >> mpassit.output
    
 done
@@ -472,6 +497,7 @@ EOSH
    chmod a+x ${DIRRUN}/PostAtmos_node.${node}.sh 
    cd ${DIRRUN}
    echo -e  "${GREEN}==>${NC} qsub PostAtmos_node.${node}.sh ${inicio} ${fim} \n"
+   
    jobid[${node}]=$(qsub ${DIRRUN}/PostAtmos_node.${node}.sh  | cut -d '.' -f1)
 
    inicio=$((fim + 1))
@@ -493,8 +519,8 @@ done
 
 # Script final , para conferir todos os arquivos, criar o template final  e apagar o diretorio DIRRUN
 node=0
-diag_name_post=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_${YYYYMMDDHHi}.00.00.x${RES}L${N_MODEL_LEV}.nc
-diag_name_templ=MONAN_DIAG_G_POS_${EXP}_${YYYYMMDDHHi}_%y4%m2%d2%h2.%n2.00.x${RES}L${N_MODEL_LEV}.nc
+diag_name_post=MONAN_DIAG_${MODERUN}_POS_${EXP}_${YYYYMMDDHHi}_${YYYYMMDDHHi}.00.00.x${RES}L${N_MODEL_LEV}.nc
+diag_name_templ=MONAN_DIAG_${MODERUN}_POS_${EXP}_${YYYYMMDDHHi}_%y4%m2%d2%h2.%n2.00.x${RES}L${N_MODEL_LEV}.nc
 
 rm -f ${DIRRUN}/PostAtmos_node.${node}.sh
 cat << EOSH >> ${DIRRUN}/PostAtmos_node.${node}.sh 

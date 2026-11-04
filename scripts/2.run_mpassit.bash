@@ -434,8 +434,8 @@ cat << EOSH >> ${DIRRUN}/PostAtmos_node.${node}.sh
 #PBS -q ${MPASSIT_QUEUE}
 #PBS -l select=1:ncpus=${MPASSIT_ncpus}:mpiprocs=${MPASSIT_ncpn}:ompthreads=${MPASSIT_nthreads}
 #PBS -l walltime=${MPASSIT_walltime}
-#PBS -o ${DIRRUN/lustre/p}/PostAtmos_node.${node}.o
-#PBS -e ${DIRRUN/lustre/p}/PostAtmos_node.${node}.e
+#PBS -o ${DIRRUN/lustre/p}/
+#PBS -e ${DIRRUN/lustre/p}/
 #PBS -l place=scatter:excl
 #PBS -V
 
@@ -499,6 +499,7 @@ EOSH
    echo -e  "${GREEN}==>${NC} qsub PostAtmos_node.${node}.sh ${inicio} ${fim} \n"
    
    jobid[${node}]=$(qsub ${DIRRUN}/PostAtmos_node.${node}.sh  | cut -d '.' -f1)
+   cp -f ${DIRRUN}/PostAtmos_node.${node}.sh ${DIRRUN}/PostAtmos_node.${node}.sh_${jobid[${node}]}
 
    inicio=$((fim + 1))
    temp=$((fim + maxpostpernode))
@@ -529,8 +530,8 @@ cat << EOSH >> ${DIRRUN}/PostAtmos_node.${node}.sh
 #PBS -q ${MPASSIT_QUEUE}
 #PBS -l select=1:ncpus=${MPASSIT_ncpus}:mpiprocs=${MPASSIT_ncpn}:ompthreads=${MPASSIT_nthreads}
 #PBS -l walltime=${MPASSIT_walltime}
-#PBS -o ${DIRRUN/lustre/p}/PostAtmos_node.${node}.o
-#PBS -e ${DIRRUN/lustre/p}/PostAtmos_node.${node}.e
+#PBS -o ${DIRRUN/lustre/p}/
+#PBS -e ${DIRRUN/lustre/p}/
 #PBS -l place=scatter:excl
 #PBS -V
 
@@ -572,20 +573,29 @@ cp -f ${EXECS}/MPASSIT-VERSION.txt ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
 cp -f ${DIRRUN}/dir.0001/namelist.input ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
 cp -f varlist_2d ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
 cp -f varlist_3d ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
-cp -f ${DIRRUN}/PostAtmos_node.* ${DATAOUT}/${YYYYMMDDHHi}/Post/logs
 
 cd ${DIRRUN}/..
-rm -fr ${DIRRUN}
 
 EOSH
 chmod a+x ${DIRRUN}/PostAtmos_node.${node}.sh
 echo -e  "${GREEN}==>${NC} qsub PostAtmos_node.${node}.sh \n"
 cd ${DIRRUN}
-#qsub -W depend=${dependency} -W block=true ${DIRRUN}/PostAtmos_node.${node}.sh
- qsub -W depend=${dependency}               ${DIRRUN}/PostAtmos_node.${node}.sh
+myjobid=$(qsub -W depend=${dependency} -W block=true ${DIRRUN}/PostAtmos_node.${node}.sh | cut -d '.' -f1)
+cp -f ${DIRRUN}/PostAtmos_node.${node}.sh ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.sh_${myjobid} 
+cp -f ${DIRRUN}/${myjobid}.pbs-ha.OU ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.o_${myjobid}
+cp -f ${DIRRUN}/${myjobid}.pbs-ha.ER ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.e_${myjobid}
 
 
-
+node=1
+for job_id in "${jobid[@]}"
+do
+   cp -f ${DIRRUN}/${job_id}.pbs-ha.OU ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.o_${job_id}
+   cp -f ${DIRRUN}/${job_id}.pbs-ha.ER ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.e_${job_id}
+   
+   node=$((node+1))
+done
+cd ${DIRRUN}/..
+rm -fr ${DIRRUN}
 
 
 

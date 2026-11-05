@@ -1,6 +1,6 @@
 # myMONAN-MPASSIT-scripts
 
-Suíte de scripts para automatizar a instalação, compilação e execução do **MPASSIT** adaptado ao **MONAN**, com pós-processamento paralelo das saídas do modelo.
+Suíte de scripts para automatizar a instalação, compilação e execução do **MPASSIT** adaptado ao **MONAN**, com pós-processamento paralelo das saídas do modelo, tanto global quanto regional.
 
 > Este repositório consome o código-fonte do [MyMONAN-MPASSIT-puro](https://github.com/carlosrenatosouza2/MyMONAN-MPASSIT-puro), clonando-o e compilando-o automaticamente.
 
@@ -23,7 +23,7 @@ Suíte de scripts para automatizar a instalação, compilação e execução do 
 
 ## Sobre
 
-Esta suíte automatiza todo o fluxo de pós-processamento do MONAN com o MPASSIT: clonagem e compilação do código-fonte, preparação de namelists e submissão da execução paralela — de forma semelhante à suíte `scripts_CT-CT` já utilizada no fluxo do MONAN.
+Esta suíte automatiza todo o fluxo de pós-processamento do MONAN com o MPASSIT: clonagem e compilação do código-fonte, preparação de namelists e submissão da execução paralela — de forma semelhante à suíte `scripts_CT-CT` já utilizada no fluxo do MONAN. Os scripts processam saídas do MONAN global e, a partir da versão **1.1.0**, também do MONAN regional.
 
 O MPASSIT processa **um arquivo de saída do modelo por execução**, mas, diferente do `convert_mpas`, faz isso **em paralelo**: várias instâncias são executadas simultaneamente dentro do mesmo nó, cada uma em sua própria pasta de trabalho.
 

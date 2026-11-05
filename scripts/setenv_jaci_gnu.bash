@@ -1,6 +1,9 @@
 #! /bin/bash -x
 #
 # Author: CRS
+# Choose the simulation mode:
+export MODERUN=R     # R=Regional simulation and G=Global simulation.
+export LBCINT=10800  # Interval (seconds) for updating lateral boundary conditions (when regional mode).
 
 # Load modules
 module purge
@@ -62,9 +65,10 @@ nc-config --has-parallel4
 # Put your directories:
 export DIR_SCRIPTS=$(dirname $(dirname $(pwd)))
 export DIR_DADOS=${DIR_SCRIPTS}
-export MPASSIT_DIR=/lustre/projetos/monan_adm/carlos.souza/MPASSIT/myMPASSIT/myMONAN-MPASSIT-scripts/sources/MPASSIT_feature/mpassit-mod2scripts-80
+export MPASSIT_DIR=/lustre/projetos/monan_adm/carlos.souza/issues/mpassit-regional/myMONAN-MPASSIT-scripts/sources/MPASSIT_feature/monan-mpassit-107-QI
 export myDIR=$(basename $(dirname $(pwd)))
 export DIRDADOS=/p/projetos/monan_adm/monan/dados/MPASSIT_v0.1.x
+export GCCCIS=/p/projetos/monan_adm/monan/CIs
 
 # Colors:
 #

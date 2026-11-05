@@ -499,7 +499,7 @@ EOSH
    echo -e  "${GREEN}==>${NC} qsub PostAtmos_node.${node}.sh ${inicio} ${fim} \n"
    
    jobid[${node}]=$(qsub ${DIRRUN}/PostAtmos_node.${node}.sh  | cut -d '.' -f1)
-   cp -f ${DIRRUN}/PostAtmos_node.${node}.sh ${DIRRUN}/PostAtmos_node.${node}.sh_${jobid[${node}]}
+   cp -f ${DIRRUN}/PostAtmos_node.${node}.sh ${DATAOUT}/${YYYYMMDDHHi}/Post/logs/PostAtmos_node.${node}.sh_${jobid[${node}]}
 
    inicio=$((fim + 1))
    temp=$((fim + maxpostpernode))
